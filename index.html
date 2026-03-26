@@ -450,10 +450,10 @@ function render(D) {
       <span>${f.text}</span>
     </div>`).join('');
 
-  // Timestamp
-  const now = new Date();
+  // Timestamp — 외부에서 주입, 없으면 현재시각
+  const ts = D.updatedAt ? new Date(D.updatedAt) : new Date();
   document.getElementById('lastUpdated').textContent =
-    `⬤ 마지막 업데이트: ${now.toLocaleDateString('ko-KR')} ${now.toLocaleTimeString('ko-KR')}`;
+    `⬤ 마지막 업데이트: ${ts.toLocaleDateString('ko-KR')} ${ts.toLocaleTimeString('ko-KR')}`;
 }
 
 // ══════════════════════════════════════════════════
@@ -483,13 +483,14 @@ function loadCSV(file) {
     const csvText = e.target.result;
     const result = analyze(csvText);
     if (result) {
-      currentData = result;
-      // 새로고침 후에도 유지되도록 저장
+      const now = new Date().toISOString();
+      result.updatedAt = now;
       try {
         localStorage.setItem('as_feedback_csv', csvText);
         localStorage.setItem('as_feedback_filename', file.name);
+        localStorage.setItem('as_feedback_updatedat', now);
       } catch(e) {}
-      applyResult(result, file.name);
+      applyResult(result, file.name, now);
     } else {
       document.getElementById('dropStatus').textContent = '⚠ 분류/의견 컬럼을 찾을 수 없습니다';
       document.getElementById('dropStatus').style.color = 'var(--accent-yellow)';
@@ -498,10 +499,11 @@ function loadCSV(file) {
   reader.readAsText(file, 'UTF-8');
 }
 
-function applyResult(result, filename) {
+function applyResult(result, filename, updatedAt) {
+  result.updatedAt = updatedAt || result.updatedAt || null;
   currentData = result;
   const name = filename || 'CSV';
-  document.getElementById('dropStatus').textContent = `✓ ${name} (${result.total}건) — 새로고침 후에도 유지됩니다`;
+  document.getElementById('dropStatus').textContent = `✓ ${name} (${result.total}건)`;
   document.getElementById('dropStatus').style.color = 'var(--accent-green)';
   document.getElementById('dashSubtitle').textContent = '아쿠아 서바이벌 — ' + name.replace('.csv','');
   render(result);
@@ -572,18 +574,42 @@ const BUILTIN_CSV = `분류,의견
 의견,보석이나 vip포인트 아이템의 경우 인벤토리에 지급되는 형태가 아닌 재화로 바로 들어오는 방향은 어떤지 의견드립니다.
 의견,건설 레벨업으로 인한 전투력 증가도 성장 동기부여 차원에서 있었으면 좋겠습니다.`;
 
-// localStorage에 저장된 CSV가 있으면 우선 적용, 없으면 내장 데이터
-try {
-  const saved = localStorage.getItem('as_feedback_csv');
-  const savedName = localStorage.getItem('as_feedback_filename') || 'CSV';
-  if (saved) {
-    const result = analyze(saved);
-    if (result) { applyResult(result, savedName); } else { throw new Error(); }
-  } else { throw new Error(); }
-} catch(e) {
-  currentData = analyze(BUILTIN_CSV);
-  if (currentData) render(currentData);
+// GitHub raw CSV URL
+const GITHUB_CSV_URL = 'https://raw.githubusercontent.com/leesblifegame/as_sl_test2603/main/feedback.csv';
+
+// 우선순위: GitHub CSV → localStorage → 내장 데이터
+async function init() {
+  try {
+    const res = await fetch(GITHUB_CSV_URL + '?_=' + Date.now());
+    if (!res.ok) throw new Error();
+    const csvText = await res.text();
+    if (csvText.trim().startsWith('<')) throw new Error();
+    const result = analyze(csvText);
+    if (!result) throw new Error();
+    // GitHub에서 불러올 때는 로컬에 저장된 updatedAt 유지 (파일이 바뀌지 않았을 수 있으므로)
+    const savedAt = localStorage.getItem('as_feedback_updatedat') || null;
+    result.updatedAt = savedAt;
+    applyResult(result, 'feedback.csv', savedAt);
+    document.getElementById('dropStatus').textContent = `✓ GitHub 최신 데이터 (${result.total}건)`;
+    document.getElementById('dropStatus').style.color = 'var(--accent-green)';
+  } catch(e) {
+    try {
+      const saved = localStorage.getItem('as_feedback_csv');
+      const savedName = localStorage.getItem('as_feedback_filename') || 'CSV';
+      const savedAt = localStorage.getItem('as_feedback_updatedat') || null;
+      if (!saved) throw new Error();
+      const result = analyze(saved);
+      if (!result) throw new Error();
+      result.updatedAt = savedAt;
+      applyResult(result, savedName, savedAt);
+    } catch(e2) {
+      currentData = analyze(BUILTIN_CSV);
+      if (currentData) render(currentData);
+    }
+  }
 }
+
+init();
 
 </script>
 </body>
