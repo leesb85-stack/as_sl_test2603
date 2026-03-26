@@ -480,19 +480,31 @@ csvInput.addEventListener('change', e => {
 function loadCSV(file) {
   const reader = new FileReader();
   reader.onload = e => {
-    const result = analyze(e.target.result);
+    const csvText = e.target.result;
+    const result = analyze(csvText);
     if (result) {
       currentData = result;
-      document.getElementById('dropStatus').textContent = `✓ ${file.name} (${result.total}건)`;
-      document.getElementById('dropStatus').style.color = 'var(--accent-green)';
-      document.getElementById('dashSubtitle').textContent = '아쿠아 서바이벌 — ' + file.name.replace('.csv','');
-      render(result);
+      // 새로고침 후에도 유지되도록 저장
+      try {
+        localStorage.setItem('as_feedback_csv', csvText);
+        localStorage.setItem('as_feedback_filename', file.name);
+      } catch(e) {}
+      applyResult(result, file.name);
     } else {
       document.getElementById('dropStatus').textContent = '⚠ 분류/의견 컬럼을 찾을 수 없습니다';
       document.getElementById('dropStatus').style.color = 'var(--accent-yellow)';
     }
   };
   reader.readAsText(file, 'UTF-8');
+}
+
+function applyResult(result, filename) {
+  currentData = result;
+  const name = filename || 'CSV';
+  document.getElementById('dropStatus').textContent = `✓ ${name} (${result.total}건) — 새로고침 후에도 유지됩니다`;
+  document.getElementById('dropStatus').style.color = 'var(--accent-green)';
+  document.getElementById('dashSubtitle').textContent = '아쿠아 서바이벌 — ' + name.replace('.csv','');
+  render(result);
 }
 
 // ══════════════════════════════════════════════════
@@ -560,8 +572,18 @@ const BUILTIN_CSV = `분류,의견
 의견,보석이나 vip포인트 아이템의 경우 인벤토리에 지급되는 형태가 아닌 재화로 바로 들어오는 방향은 어떤지 의견드립니다.
 의견,건설 레벨업으로 인한 전투력 증가도 성장 동기부여 차원에서 있었으면 좋겠습니다.`;
 
-currentData = analyze(BUILTIN_CSV);
-if (currentData) render(currentData);
+// localStorage에 저장된 CSV가 있으면 우선 적용, 없으면 내장 데이터
+try {
+  const saved = localStorage.getItem('as_feedback_csv');
+  const savedName = localStorage.getItem('as_feedback_filename') || 'CSV';
+  if (saved) {
+    const result = analyze(saved);
+    if (result) { applyResult(result, savedName); } else { throw new Error(); }
+  } else { throw new Error(); }
+} catch(e) {
+  currentData = analyze(BUILTIN_CSV);
+  if (currentData) render(currentData);
+}
 
 </script>
 </body>
