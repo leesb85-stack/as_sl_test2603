@@ -352,19 +352,19 @@ body{
   <p class="main-subtitle">사내 테스트 시나리오 공지</p>
   <div class="hdiv"><div class="hdiv-d"></div></div>
   <div class="tab-nav">
-    <button class="tab-btn active" onclick="switchTab('notice',this)">📢 &nbsp;공지</button>
-    <button class="tab-btn" onclick="switchTab('target',this)">👥 &nbsp;지급대상</button>
+    <button class="tab-btn" onclick="switchTab('notice',this)">📢 &nbsp;공지</button>
     <button class="tab-btn" onclick="switchTab('main',this)">⚔️ &nbsp;메인 시나리오</button>
     <button class="tab-btn" onclick="switchTab('install',this)">💿 &nbsp;설치 방법</button>
     <button class="tab-btn" onclick="switchTab('help',this)">📖 &nbsp;도움말</button>
     <button class="tab-btn" onclick="switchTab('prize',this)">🎁 &nbsp;경품</button>
+    <button class="tab-btn active" onclick="switchTab('target',this)">👥 &nbsp;지급대상</button>
   </div>
 </header>
 
 <div class="content-wrapper">
 
   <!-- ====== NOTICE TAB ====== -->
-  <div id="tab-notice" class="tab-content active">
+  <div id="tab-notice" class="tab-content">
 
     <!-- 공지 보상 -->
     <div class="sh" style="margin-top:0">
@@ -430,7 +430,7 @@ body{
   <!-- END NOTICE TAB -->
 
   <!-- ====== TARGET TAB ====== -->
-  <div id="tab-target" class="tab-content">
+  <div id="tab-target" class="tab-content active">
 
     <div class="sh" style="margin-top:0">
       <span class="sh-icon">👥</span>
@@ -1051,6 +1051,11 @@ function switchTab(name, btn) {
   document.getElementById('tab-' + name).classList.add('active');
   btn.classList.add('active');
 }
+
+window.onload = function() {
+  var targetBtn = document.querySelector('.tab-btn:last-child');
+  switchTab('target', targetBtn);
+};
 
 function copyApkUrl(btn) {
   var tmp = document.createElement('textarea');
